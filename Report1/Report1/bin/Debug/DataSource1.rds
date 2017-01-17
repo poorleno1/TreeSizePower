@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<RptDataSource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="DataSource1">
-  <ConnectionProperties>
-    <Extension>SQL</Extension>
-    <ConnectString>Data Source=LTF11000\MSSQLSERVER2014;Initial Catalog=ITInfra</ConnectString>
-    <Prompt>Specify a user name and password for data source DataSource1:</Prompt>
-  </ConnectionProperties>
-  <DataSourceID>25bbc1f9-43db-47df-85a7-b5c1383346b0</DataSourceID>
-</RptDataSource>

@@ -3,7 +3,7 @@
   <Description />
   <DataSet Name="J_area">
     <Query>
-      <DataSourceReference>DataSource1</DataSourceReference>
+      <DataSourceReference>DataSource</DataSourceReference>
       <CommandText>SELECT [g-drive],sizeGB,FolderID
   FROM [ITInfra].[slc].[vw_3rdLevelFolder] 
 where [slc].[fn_Split6] ([g-drive],'\',2) ='J'</CommandText>
