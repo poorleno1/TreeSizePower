@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SharedDataSet xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2010/01/shareddatasetdefinition">
+  <DataSet Name="">
+    <Query>
+      <DataSourceReference>DataSource</DataSourceReference>
+      <DataSetParameters>
+        <DataSetParameter Name="@folderID">
+          <DefaultValue>1167244</DefaultValue>
+          <ReadOnly>false</ReadOnly>
+          <Nullable>false</Nullable>
+          <OmitFromQuery>false</OmitFromQuery>
+          <rd:DbType>Int32</rd:DbType>
+        </DataSetParameter>
+        <DataSetParameter Name="@sort">
+          <ReadOnly>false</ReadOnly>
+          <Nullable>false</Nullable>
+          <OmitFromQuery>true</OmitFromQuery>
+          <rd:DbType>AnsiStringFixedLength</rd:DbType>
+        </DataSetParameter>
+      </DataSetParameters>
+      <CommandType>StoredProcedure</CommandType>
+      <CommandText>slc.GetFolderHierarchy</CommandText>
+      <rd:UseGenericDesigner>true</rd:UseGenericDesigner>
+    </Query>
+    <Fields>
+      <Field Name="FolderID">
+        <DataField>FolderID</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+      <Field Name="ParentFolderID">
+        <DataField>ParentFolderID</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+      <Field Name="ServerID">
+        <DataField>ServerID</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+      <Field Name="SizeBytes">
+        <DataField>SizeBytes</DataField>
+        <rd:TypeName>System.Int64</rd:TypeName>
+      </Field>
+      <Field Name="Level">
+        <DataField>Level</DataField>
+        <rd:TypeName>System.Byte</rd:TypeName>
+      </Field>
+      <Field Name="Name">
+        <DataField>Name</DataField>
+        <rd:TypeName>System.String</rd:TypeName>
+      </Field>
+      <Field Name="DriveID">
+        <DataField>DriveID</DataField>
+        <rd:TypeName>System.Byte</rd:TypeName>
+      </Field>
+      <Field Name="RelLevel">
+        <DataField>RelLevel</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+      <Field Name="No_Files">
+        <DataField>No.Files</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+      <Field Name="averagesizeKB">
+        <DataField>averagesizeKB</DataField>
+        <rd:TypeName>System.Int64</rd:TypeName>
+      </Field>
+      <Field Name="MinCreationTime">
+        <DataField>MinCreationTime</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="MaxCreationTime">
+        <DataField>MaxCreationTime</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="MinLastWriteTime">
+        <DataField>MinLastWriteTime</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="MaxLastWriteTime">
+        <DataField>MaxLastWriteTime</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="MinLastAccessTime">
+        <DataField>MinLastAccessTime</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="MaxLastAccessTime">
+        <DataField>MaxLastAccessTime</DataField>
+        <rd:TypeName>System.DateTime</rd:TypeName>
+      </Field>
+      <Field Name="percentage">
+        <DataField>percentage</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+      <Field Name="owner">
+        <DataField>owner</DataField>
+        <rd:TypeName>System.String</rd:TypeName>
+      </Field>
+      <Field Name="rnk">
+        <DataField>rnk</DataField>
+        <rd:TypeName>System.Int64</rd:TypeName>
+      </Field>
+    </Fields>
+  </DataSet>
+</SharedDataSet>

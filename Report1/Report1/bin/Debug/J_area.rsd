@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SharedDataSet xmlns:rd="http://schemas.microsoft.com/SQLServer/reporting/reportdesigner" xmlns="http://schemas.microsoft.com/sqlserver/reporting/2010/01/shareddatasetdefinition">
+  <Description />
+  <DataSet Name="J_area">
+    <Query>
+      <DataSourceReference>DataSource1</DataSourceReference>
+      <CommandText>SELECT [g-drive],sizeGB,FolderID
+  FROM [ITInfra].[slc].[vw_3rdLevelFolder] 
+where [slc].[fn_Split6] ([g-drive],'\',2) ='J'</CommandText>
+    </Query>
+    <Fields>
+      <Field Name="g_drive">
+        <DataField>g-drive</DataField>
+        <rd:TypeName>System.String</rd:TypeName>
+      </Field>
+      <Field Name="sizeGB">
+        <DataField>sizeGB</DataField>
+        <rd:TypeName>System.Int64</rd:TypeName>
+      </Field>
+      <Field Name="FolderID">
+        <DataField>FolderID</DataField>
+        <rd:TypeName>System.Int32</rd:TypeName>
+      </Field>
+    </Fields>
+  </DataSet>
+</SharedDataSet>
