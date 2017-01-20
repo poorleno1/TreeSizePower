@@ -37,16 +37,16 @@
       <FullPath>J_area.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
+      <Name>Level4.rsd</Name>
+      <FullPath>Level4.rsd</FullPath>
+    </ProjectItem>
+    <ProjectItem>
       <Name>Market_area.rsd</Name>
       <FullPath>Market_area.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
       <Name>SFR_area.rsd</Name>
       <FullPath>SFR_area.rsd</FullPath>
-    </ProjectItem>
-    <ProjectItem>
-      <Name>Level4.rsd</Name>
-      <FullPath>Level4.rsd</FullPath>
     </ProjectItem>
   </DataSets>
   <Reports>
@@ -73,7 +73,9 @@
         <TargetServerURL>http://ltf11000/ReportServer_MSSQLSERVER2014</TargetServerURL>
         <TargetFolder>Report1</TargetFolder>
         <TargetDataSourceFolder>Data Sources</TargetDataSourceFolder>
+        <OverwriteDataSources>true</OverwriteDataSources>
         <TargetDatasetFolder>Datasets</TargetDatasetFolder>
+        <OverwriteDatasets>true</OverwriteDatasets>
         <TargetReportPartFolder>Report Parts</TargetReportPartFolder>
       </Options>
     </Configuration>

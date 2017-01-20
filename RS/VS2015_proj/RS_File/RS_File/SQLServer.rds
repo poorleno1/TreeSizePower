@@ -1,8 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<RptDataSource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="SQLServer">
-  <ConnectionProperties>
-    <Extension>SQL</Extension>
-    <ConnectString>Data Source=sfrfidcsqla012p,5097;Initial Catalog=ITInfra</ConnectString>
-  </ConnectionProperties>
-  <DataSourceID>2124b319-1fea-4ea8-ab26-9e8c92a2a1e2</DataSourceID>
-</RptDataSource>
