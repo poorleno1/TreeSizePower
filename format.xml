@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<BCPFORMAT xmlns="http://schemas.microsoft.com/sqlserver/2004/bulkload/format" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <RECORD>
+  <FIELD ID="0" xsi:type="CharTerm" TERMINATOR='"' MAX_LENGTH="10"/>
+  <FIELD ID="1" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="510"/>
+  <FIELD ID="2" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="255"/>
+  <FIELD ID="3" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="255"/>
+  <FIELD ID="4" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="50"/>
+  <FIELD ID="5" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="50"/>
+  <FIELD ID="6" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="50"/>
+  <FIELD ID="7" xsi:type="CharTerm" TERMINATOR=';\0' MAX_LENGTH="50"/>
+  <FIELD ID="8" xsi:type="CharTerm" TERMINATOR='\r\0\n\0' MAX_LENGTH="255"/>
+  </RECORD>
+ <ROW>
+  <COLUMN SOURCE="1" NAME="Directory" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="2" NAME="BaseName" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="3" NAME="Extension" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="4" NAME="LastWriteTime" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="5" NAME="CreationTime" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="6" NAME="LastAccessTime" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="7" NAME="Length" xsi:type="SQLNVARCHAR"/>
+  <COLUMN SOURCE="8" NAME="Owner" xsi:type="SQLNVARCHAR"/>
+ </ROW>
+</BCPFORMAT>

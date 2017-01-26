@@ -1,0 +1,11 @@
+9.0
+9
+1       SQLNCHAR            0       0        "\"\0"       0     FIRST_QUOTE         Latin1_General_CI_AS
+2       SQLNCHAR            0       510      "\"\0;\0\"\0"       1     Directory         Latin1_General_CI_AS
+3       SQLNCHAR            0       510      "\"\0;\0\"\0"       2     BaseName         Latin1_General_CI_AS
+4       SQLNCHAR            0       510      "\"\0;\0\"\0"       3     Extension         Latin1_General_CI_AS
+5       SQLNCHAR            0       100      "\"\0;\0\"\0"       4     LastWriteTime         Latin1_General_CI_AS
+6       SQLNCHAR            0       100      "\"\0;\0\"\0"       5     CreationTime         Latin1_General_CI_AS
+7       SQLNCHAR            0       100      "\"\0;\0\"\0"       6     LastAccessTime         Latin1_General_CI_AS
+8       SQLNCHAR            0       100      "\"\0;\0\"\0"       7     Length         Latin1_General_CI_AS
+9       SQLNCHAR            0       255      "\"\0\r\0\n\0"  8     Owner         Latin1_General_CI_AS
