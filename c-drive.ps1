@@ -1,5 +1,5 @@
 $Missing_value='none'
-$Folder = 'C:\Temp'
+$Folder = 'C:\Intel'
 $OutputFolder = 'C:\Temp\slc\'
 $OutputFile = 'c-drive3.csv'
 $ExportCSV = $OutputFolder + $OutputFile
@@ -95,6 +95,12 @@ CREATE TABLE [slc].["+$tableNAme+"]( `
 	[Owner] [nvarchar](255) NULL) `
 "
 
+$Query_createView=" `
+create view slc.vw_drive `
+as `
+SELECT * FROM [ITInfra].[slc].["+$tableNAme+"] `
+GO"
+
 $query_bulLoad=" `
 BULK INSERT [slc].["+$tableNAme+"] `
 FROM '"+$ExportCSV+"' `
@@ -102,12 +108,14 @@ WITH ( `
 FORMATFILE = '"+$SQLFormatFile+"', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
 
 
+$query_ProcessData="exec [slc].[Import_data6] 1"
 
-$query_drop=" `
+$query_dropTable=" `
 select top 2  * from [slc].["+$tableNAme+"] `
-drop table [slc].["+$tableNAme+"]"
+drop table [slc].["+$tableNAme+"] `
+"
 
-
+$query_dropView="drop view slc.vw_drive"
 
 #$Query = "Select top 1 * from [slc].[e-drive] `
 #Go `
@@ -127,11 +135,21 @@ if ((Test-SQLConnection $ConnectionString) -eq $true)
 Write-Host "Creating table: $tableNAme"
 Execute-SQLStatement ($query)
 
+Write-Host "Creating view."
+Execute-SQLStatement ($Query_createView)
+
 Write-Host "Inserting data into table: $tableNAme"
 Execute-SQLStatement ($query_bulLoad)
 
+Write-Host "Processing data."
+Execute-SQLStatement ($query_ProcessData)
+
 Write-Host "Dropping table: $tableNAme"
-Execute-SQLStatement ($query_drop)
+Execute-SQLStatement ($query_dropTable)
+
+Write-Host "Dropping View: $tableNAme"
+Execute-SQLStatement ($query_dropView)
+
 
 }
 else

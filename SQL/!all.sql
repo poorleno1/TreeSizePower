@@ -1,6 +1,7 @@
 ﻿--sp_who2
 --kill 52   
 --alter database [ITInfra] set single_user with rollback immediate
+
 --alter database [ITInfra] set multi_user with rollback immediate
 --drop database [ITInfra]
 
@@ -284,6 +285,33 @@ CREATE TABLE [slc].[e-drive](
 ) ON [PRIMARY]
 
 GO
+
+--drop table [slc].[Approvers]
+
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+SET ANSI_PADDING ON
+GO
+
+CREATE TABLE [slc].[Approvers](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[DriveName] [nvarchar](100) NULL,
+	[Approver1] [nvarchar](100) NULL,
+	[Approver2] [nvarchar](100) NULL,
+	[Approver1ShortName] [varchar](50) NULL,
+	[Approver2ShortName] [varchar](50) NULL,
+	[LastUpdatedBy] [varchar](50) NULL,
+	[LastUpdateTime] [datetime] NULL,
+	[IsConfirmed] [bit] NULL
+) ON [PRIMARY]
+
+GO
+
+
 /****** Object:  Table [slc].[Excel_gdrive]    Script Date: 05.01.2017 9:59:30 ******/
 SET ANSI_NULLS ON
 GO
@@ -627,9 +655,17 @@ CREATE VIEW [slc].[vw_3rdLevelFolder]
 AS
 SELECT     t1.FolderID, t1.ParentFolderID, t1.ServerID, t1.DriveID, t1.Name, t2.SizeBytes, t2.SizeGB, 'G:' + reverse(SUBSTRING(reverse(t1.name), 1, CHARINDEX('\', 
                       reverse(t1.name), CHARINDEX('\', reverse(t1.name), CHARINDEX('\', reverse(t1.name), 0) + 1)))) AS [G-drive]
+					  ,case
+			when t3.[Approver1] is not null then t3.[Approver1]
+			else isnull(t4.[Approver1],'')
+		end as Approver1
 FROM         [ITInfra].[slc].[vw_folder_by_size] t1 LEFT OUTER JOIN
                           (SELECT     folderID, size AS SizeBytes, size / (1024 * 1024 * 1024) AS SizeGB
                             FROM          slc.Folder_aggregated) t2 ON t1.FolderID = t2.folderID
+	left outer join [slc].[Approvers] t3
+	on 'G:' + SUBSTRING(t1.Name, CHARINDEX('\', t1.Name, 4), len(t1.name)-CHARINDEX('\', t1.Name, 4) + 1) =t3.[DriveName]
+	left outer join [slc].[Approvers] t4
+	on 'G:\'+[slc].[fn_Split6](t1.NAme,'\',3) +'\'+ [slc].[fn_Split6](t1.NAme,'\',4)=t4.[DriveName]
 WHERE     LEVEL = 3 AND (DriveID = 23 AND serverid = 2 AND t1.Name NOT LIKE 'W:\HomeFolderToBeDeleted%' OR
                       DriveID = 21 AND serverid = 2 OR
                       DriveID = 5 AND serverid = 1 OR
@@ -637,7 +673,6 @@ WHERE     LEVEL = 3 AND (DriveID = 23 AND serverid = 2 AND t1.Name NOT LIKE 'W:\
 					  DriveID = 7 AND serverid = 4 OR
 					  DriveID = 8 AND serverid = 4 OR
 					  DriveID = 6 AND serverid = 1)
-
 GO
 
 
@@ -653,15 +688,20 @@ as
 (
 SELECT     t1.FolderID, t1.ParentFolderID, t1.ServerID, t1.DriveID, t1.Name, t2.SizeBytes, t2.SizeGB, 'G:' + SUBSTRING(t1.Name, CHARINDEX('\', t1.Name, 4), len(t1.name) 
                       - CHARINDEX('\', t1.Name, 4) + 1) AS [G-drive]
-		,isnull(t3.[Approver1],'') as Approver1
+		,case
+			when t3.[Approver1] is not null then t3.[Approver1]
+			else isnull(t4.[Approver1],'')
+		end as Approver1
 		,SUBSTRING(t1.Name, CHARINDEX('\', t1.Name, 4)+1, len(t1.name) - CHARINDEX('\', t1.Name, 4) ) AS [tempdrive]
 		
-FROM         [ITInfra].[slc].[vw_folder_by_size] t1 LEFT OUTER JOIN
-                          (SELECT     folderID, size AS SizeBytes, size / (1024 * 1024 * 1024) AS SizeGB
-                            FROM          slc.Folder_aggregated) t2 ON t1.FolderID = t2.folderID
-							left outer join [slc].[Excel_gdrive] t3
-					on 
-							'G:' + SUBSTRING(t1.Name, CHARINDEX('\', t1.Name, 4), len(t1.name)-CHARINDEX('\', t1.Name, 4) + 1) =t3.[DriveName]
+FROM         [ITInfra].[slc].[vw_folder_by_size] t1 
+
+	LEFT OUTER JOIN (SELECT     folderID, size AS SizeBytes, size / (1024 * 1024 * 1024) AS SizeGB FROM          slc.Folder_aggregated) t2 
+	ON t1.FolderID = t2.folderID
+	left outer join [slc].[Approvers] t3
+	on 'G:' + SUBSTRING(t1.Name, CHARINDEX('\', t1.Name, 4), len(t1.name)-CHARINDEX('\', t1.Name, 4) + 1) =t3.[DriveName]
+	left outer join [slc].[Approvers] t4
+	on 'G:\'+[slc].[fn_Split6](t1.NAme,'\',3) +'\'+ [slc].[fn_Split6](t1.NAme,'\',4)=t4.[DriveName]
 
 WHERE     LEVEL = 4 AND (DriveID = 23 AND serverid = 2 AND t1.Name NOT LIKE 'W:\HomeFolderToBeDeleted%' OR
                       DriveID = 21 AND serverid = 2 OR
@@ -1102,20 +1142,22 @@ as
 select @path as [G-drive],sum(sizebytes) as Size,@folderid as FolderID from slc.FileName where folderid=@folderid 
 )
 
-select [G-drive]
-, FolderID 
+select t1.[G-drive]
+, t1.FolderID 
 ,isnull(case  
-	when sizeBytes < 1024 then cast(sizeBytes as varchar(20))  +' Bytes'
-	when sizeBytes >= 1024 and sizeBytes < 1024*1024 then cast((sizeBytes)/(1024) as varchar(20)) + ' kB'
-	when sizeBytes >= 1024*1024 and sizeBytes < 1024*1024*1024 then cast((sizeBytes)/(1024*1024) as varchar(20)) + ' MB'
-	when sizeBytes >= 1024*1024*1024  then cast((sizeBytes)/(1024*1024*1024) as varchar(20)) + ' GB'
+	when t1.sizeBytes < 1024 then cast(t1.sizeBytes as varchar(20))  +' Bytes'
+	when t1.sizeBytes >= 1024 and t1.sizeBytes < 1024*1024 then cast((t1.sizeBytes)/(1024) as varchar(20)) + ' kB'
+	when t1.sizeBytes >= 1024*1024 and t1.sizeBytes < 1024*1024*1024 then cast((t1.sizeBytes)/(1024*1024) as varchar(20)) + ' MB'
+	when t1.sizeBytes >= 1024*1024*1024  then cast((t1.sizeBytes)/(1024*1024*1024) as varchar(20)) + ' GB'
 end,'') as Size
-,isnull(SizeBytes,0) as SizeBytes
+,isnull(t1.SizeBytes,0) as SizeBytes
 ,'' as Replicated
 ,'' as server1
 ,'' as server2
-,'' as Approver1
-from ctesum 
+,t2.Approver1 as Approver1
+from ctesum t1
+left outer join [slc].[vw_3rdLevelFolder]  t2
+on t1.FolderID=t2.FolderID
 
 
 union all
@@ -1138,15 +1180,6 @@ end as Size
 ,server2
 ,approver1
 
---,case sizeGB when 0 then 
---	case SizeBytes/(1024*1024) when 0 then cast(SizeBytes/(1024) as varchar(18)) + ' kB'
---	else cast(SizeBytes/(1024*1024) as varchar(18)) + ' MB'
---	end
---else cast(sizeGB as varchar(20)) + ' GB'
---end as Size
---, [slc].[fn_Split6] ([g-drive],'\',2),SizeBytes
---sum(SizeBytes)/(1024*1024) as GB
-
   FROM [ITInfra].[slc].[vw_4thLevelFolder] 
   where 1=1
   and [slc].[fn_Split6] ([g-drive],'\',2) =@lev1
@@ -1158,11 +1191,6 @@ RETURN 0
 --exec slc.get4thLevFolder 'G:\APPL\PL_EMS',72716
 --exec slc.get4thLevFolder 'G:\MARKET\Pol_Common',1102615
 end
-
---G:\APPL\UCM1	1047	1168268	1124553509626
---G:\SFR\SuccessFactors	1	266311
---G:\APPL\PL_EMS	39	72716	42821200947
-GO
 /****** Object:  StoredProcedure [slc].[getFilesOwner]    Script Date: 05.01.2017 9:59:30 ******/
 SET ANSI_NULLS ON
 GO
@@ -2330,30 +2358,6 @@ deallocate data
 end
 GO
 
---drop table [slc].[Approvers]
-
-SET ANSI_NULLS ON
-GO
-
-SET QUOTED_IDENTIFIER ON
-GO
-
-SET ANSI_PADDING ON
-GO
-
-CREATE TABLE [slc].[Approvers](
-	[ID] [int] IDENTITY(1,1) NOT NULL,
-	[DriveName] [nvarchar](100) NULL,
-	[Approver1] [nvarchar](100) NULL,
-	[Approver2] [nvarchar](100) NULL,
-	[Approver1ShortName] [varchar](50) NULL,
-	[Approver2ShortName] [varchar](50) NULL,
-	[LastUpdatedBy] [varchar](50) NULL,
-	[LastUpdateTime] [datetime] NULL,
-	[IsConfirmed] [bit] NULL
-) ON [PRIMARY]
-
-GO
 
 SET ANSI_NULLS ON
 GO
@@ -2661,6 +2665,7 @@ AS
 
 	select @name=Name from [slc].[users] where samaccountname=@Approver1ShortName
 
+	if not exists (select top 1 * from [slc].[Approvers] where[DriveName]=@DriveName )
     Insert into 
 		[slc].[Approvers] 
 			([DriveName],[LastUpdateTime],[LastUpdatedBy],[Approver1ShortName],[Approver1]) 
@@ -3242,7 +3247,7 @@ print 'creating indexes'
 END
 
 
-
+GO
 
 
 
@@ -4336,3 +4341,242 @@ left outer join [slc].[users] t3
 on t1.[Approver2]=t3.name
 
 Go
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		Jarek Olechno
+-- Create date: 23.11.2016
+-- Description:	Process data imported from file servers
+-- =============================================
+create PROCEDURE [slc].[Import_data6]
+	-- Add the parameters for the stored procedure here
+	@serverID int
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+
+--declare @serverID int
+declare @directory nvarchar(MAX)
+declare @ParentDirectory nvarchar(4000)
+declare @BaseName nvarchar(255)
+declare @Extension nvarchar(255)
+declare @LastWriteTime nvarchar(50)
+declare @CreationTime nvarchar(50)
+declare @LastAccessTime nvarchar(50)
+declare @Length nvarchar(50)
+declare @Owner nvarchar(255)
+declare @hash varbinary(20)
+declare @hashParent varbinary(20)
+declare @indentity bigint
+--declare @RowUpdateTime datetime
+declare @RowUpdateTime_selected datetime
+declare @folderID int
+declare @folderID_selected int
+declare @ParentfolderID int
+declare @ExtensionID int
+declare @isNew bit
+
+--declare @serverID int
+--set @serverID=1
+declare @RowUpdateTime datetime
+select @RowUpdateTime=GETDATE()
+--select @RowUpdateTime=dateadd(day,-7,GETDATE())
+declare @driveID int
+--select @RowUpdateTime=dateadd(day,-7,GETDATE())
+
+print '-----------------------'
+print 'Processing Folder table'
+
+select top 1 @driveID=driveID from slc.drive where name in (select top 1 cast(replace(slc.fn_Split6(directory,'\',1),':','') as CHAR(1)) from [slc].[vw_drive])
+
+print 'Dropping indexes'
+IF  EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[slc].[Folder]') AND name = N'idx_Name_server')
+DROP INDEX [idx_Name_server] ON [slc].[Folder] WITH ( ONLINE = OFF )
+
+
+IF  EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[slc].[Folder]') AND name = N'PK_Folder2')
+ALTER TABLE [slc].[Folder] DROP CONSTRAINT [PK_Folder2]
+
+print 'upserting data'
+  merge into [slc].[Folder] a
+  using (SELECT distinct directory,@serverID as ServerID FROM [ITInfra].[slc].[vw_drive]) b
+  on a.hash = HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.[Directory]))))) and a.serverid=b.serverid
+  when not matched then 
+  INSERT
+     ([Name],[DriveID],[Level],[LastRowUpdateTime],[IsNew],[ServerID],[Length],[hash],[ParentFolderID])
+  VALUES
+	(cast(Directory as NVARCHAR(4000)),@driveID,slc.CountOccurancesOfString(cast(Directory as nvarchar(4000)),'\'),@RowUpdateTime,1,@serverID, LEN(b.[Directory])
+  ,HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.[Directory])))))
+  ,-1);
+  
+ print 'creating indexes'
+ CREATE NONCLUSTERED INDEX [idx_Name_server] ON [slc].[Folder] 
+(
+	[Name] ASC,
+	[ServerID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+
+/****** Object:  Index [PK_Folder2]    Script Date: 11/28/2016 15:54:43 ******/
+ALTER TABLE [slc].[Folder] ADD  CONSTRAINT [PK_Folder2] PRIMARY KEY CLUSTERED 
+(
+	[FolderID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+ 
+
+
+ print '-----------------------'
+print 'Processing Extension table'
+
+  merge into slc.FileExtensions a
+  using (select distinct Extension  FROM [ITInfra].[slc].[vw_drive]) b
+  on a.Name = b.Extension
+  when not matched then
+  insert
+	([Name])
+	Values
+	(b.Extension);
+
+
+ print '-----------------------'
+print 'Processing File table'
+print 'dropping indexes'
+
+IF  EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[slc].[FileName]') AND name = N'idx_FolderID')
+DROP INDEX [idx_FolderID] ON [slc].[FileName] WITH ( ONLINE = OFF )
+  
+  print 'upserting data'
+
+
+merge into slc.FileName a
+  using (select  b.folderID, a.BaseName ,a.Length ,a.Owner
+  , case isdate(a.CreationTime)
+  when 1 then a.CreationTime
+  else
+		case isdate(a.LastWriteTime)
+	  when 1 then a.LastWriteTime
+	  else
+		@RowUpdateTime
+	 end
+ end as CreationTime
+  , case isdate(a.LastWriteTime)
+  when 1 then a.LastWriteTime
+  else
+	@RowUpdateTime
+ end as LastWriteTime
+ , case isdate(a.LastAccessTime)
+  when 1 then a.LastAccessTime
+  else
+	@RowUpdateTime
+ end  as LastAccessTime
+  --a.CreationTime,a.LastWriteTime,a.LastAccessTime
+  ,@RowUpdateTime as LastRowUpdateTime, 1 as IsNew, @serverID as ServerID
+  ,c.ExtensionID 
+  from slc.[vw_drive] a
+  inner join [slc].[Folder] b
+  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(a.Directory))))) = b.hash
+  inner join slc.FileExtensions c
+  on a.Extension = c.Name) d
+  on a.Name=d.BaseName and a.serverID=d.ServerID and a.folderID=d.FolderID
+  When matched then
+  Update
+	set a.LastRowUpdateTime = @RowUpdateTime
+	,a.SizeBytes = d.Length
+	,a.LastAccessTime = case isdate(a.LastAccessTime)   when 1 then a.LastAccessTime else @RowUpdateTime end
+	,a.CreationTime = case isdate(a.CreationTime) when 1 then a.CreationTime else case isdate(a.LastWriteTime) when 1 then a.LastWriteTime else @RowUpdateTime end end
+	,a.LastWriteTime = case isdate(a.LastWriteTime) when 1 then a.LastWriteTime else @RowUpdateTime end
+  when not matched then
+  INSERT 
+    ([FolderID],[Name],[SizeBytes],[Owner],[CreationTime],[LastWriteTime],[LastAccessTime],[LastRowUpdateTime],[IsNew],[ServerID],[ExtensionID])
+  VALUES
+    (d.FolderID,d.BaseName,d.Length,d.Owner,d.CreationTime,d.LastWriteTime,d.LastAccessTime,d.LastRowUpdateTime,d.IsNew,d.ServerID,d.ExtensionID)
+ when not matched  By source then
+ delete;
+
+
+
+print 'creating indexes'
+ CREATE CLUSTERED INDEX [idx_FolderID] ON [slc].[FileName] 
+(
+	[FolderID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+
+
+ 
+ print 'updating Folder table, filling subfolder gaps' 
+ --This creates a subfolders entries in tables, for folders where there are no files.
+
+  declare @r int
+	merge into [slc].[Folder] a
+    using (
+		 select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) as hash,slc.GetParentDirectory(name) as Name,serverid from [slc].[Folder] t1
+			 where not exists
+				(
+					select name from [slc].[Folder] t2
+					where t2.name=slc.GetParentDirectory(t1.name)
+					and t1.serverID = t2.serverID
+				)
+    ) b
+	  on a.hash = b.hash
+	  and a.serverid=b.serverid
+	  when not matched and b.name is not null then
+	   INSERT 
+	   ([Name],[DriveID],[Level],[LastRowUpdateTime],[IsNew],[ServerID],[Length],[hash],[ParentFolderID])
+	   VALUES
+	   (b.name,@driveID,slc.CountOccurancesOfString([Name],'\'),@RowUpdateTime,1,b.serverid,len(b.name),HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.name))))),-1);
+	    select @r=@@ROWCOUNT
+  while @r >= 0
+  begin
+  --PRINT 'Inside WHILE LOOP on TechOnTheNet.com';
+	print @r
+	--set @r= @r-1;
+	   merge into [slc].[Folder] a
+    using (
+		 select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) as hash,slc.GetParentDirectory(name) as Name,serverid from [slc].[Folder] t1
+			 where not exists
+				(
+					select name from [slc].[Folder] t2
+					where t2.name=slc.GetParentDirectory(t1.name)
+					and t1.serverID = t2.serverID
+				)
+    ) b
+	  on a.hash = b.hash
+	  and a.serverid=b.serverid
+	  when not matched and b.name is not null then
+	   INSERT
+	   ([Name],[DriveID],[Level],[LastRowUpdateTime],[IsNew],[ServerID],[Length],[hash],[ParentFolderID]) 
+	   VALUES
+	   (b.name,@driveID,slc.CountOccurancesOfString([Name],'\'),@RowUpdateTime,1,b.serverid,len(b.name),HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.name))))),-1);
+	    select @r=@@ROWCOUNT
+		
+		if (@r=0)
+			break
+		else
+			Continue
+  end
+
+
+ 
+  merge into [slc].[Folder] a
+  using (select * from [slc].[Folder] where hash in (select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) from [slc].[Folder])) b
+  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(a.name)))))) = b.hash
+   when matched then
+  update
+	set a.ParentFolderID=b.FolderID;
+  
+  
+--select  * from [slc].[Folder] where parentfolderid<>-1
+--SFRFIDCFIDF007P: exec [slc].[Import_data6] 1
+--SFRFIDCFIDF002P: exec [slc].[Import_data4] 2
+--SFRFIDCFIDF003P: exec [slc].[Import_data4] 3
+--SFRFIDCFIDF008P: exec [slc].[Import_data4] 4
+
+END
+
+GO
