@@ -1,11 +1,12 @@
 #$currentFolder="C:\Jarek\Apps\TreeSizePower"
 #. "$PSScriptRoot\Logging_Functions.ps1"
 $Missing_value='none'
-$Folder = 'C:\Drivers\'
+$Folder = 'C:\temp\'
 $OutputFolder = 'C:\Temp\slc\'
 $OutputFile = 'c-drive3.csv'
 $ExportCSV = $OutputFolder + $OutputFile
 
+#$ServerName = "SFRFIDCSQLA035P,5097"
 $ServerName = "LTF11000\MSSQLSERVER2014"
 $DatabaseName = "ITInfra"
 #Random generation of table name
@@ -215,32 +216,40 @@ function Write-Log
     } 
 }
 
+function VerifyIfAuthorized ($Hostname)
+{
+    #$query_GetServerID=" `
+    #    SELECT [ServerID] FROM [ITInfra].[slc].[Server] where name='SFRFIDCFIDF007P'"
+    $query_GetServerID=" `
+    SELECT [ServerID] FROM [ITInfra].[slc].[Server] where name='"+$Hostname+"'"
+
+    $conn=New-Object System.Data.SqlClient.SQLConnection
+    $ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Timeout={2}" -f $ServerName,$DatabaseName,$ConnectionTimeout
+    $conn.ConnectionString=$ConnectionString
+    $conn.Open()
+    $Command = New-Object System.Data.SQLClient.SQLCommand
+    $Command.Connection=$conn
+    $Command.CommandText=$query_GetServerID
+    $ServerID = $Command.ExecuteScalar()
+    $conn.Close()
+    if (!($ServerID))
+    {
+        #Write-Host "Your computer is not on authorized list. Hostname: $Hostname"
+        #Write-Log -Message "Your computer is not on authorized list. Hostname: $Hostname" -Path $exportCurrentLog -Level Error
+        return 0
+    }
+    else
+    {
+        return $ServerID
+    }
+
+}
+
+
 #Log
 #Write-Host "Checking if current log file exists."
 Write-Log -Message "********************************Script started ********************************" -Path $exportCurrentLog -Level Info
 Write-Log -Message "Checking if current log file exists." -Path $exportCurrentLog -Level Info
-#if (!(Test-Path $exportCurrentLog))
-#{
-    #Write-Log -Message "File does not exist." -Path $exportCurrentLog -Level Info
-    #Write-Log -Message "Creating Current log file." -Path $exportCurrentLog -Level Info
-    #try
-    #{
-    #    New-Item -ItemType file -Path $OutputFolder -Name $currentLogFile -ea stop
-    #}
-    #catch
-    #{
-    #    Write-Log -Message "Something went wrong with creating file: $_.Exception.Number" -Path $exportCurrentLog -Level Error
-    #    $subj = "Error in " + $env:computername
-    #    SendMail "Cannot create log file." $subj
-    #}
-#}
-#else
-#{
- #   Write-Log -Message "File does exist. Continuing." -Path $exportCurrentLog -Level Info
-#}
-
-
-
 
 if (Test-Path $exportCurrentLog)
 {
@@ -317,17 +326,6 @@ catch [System.IO]
     }
 }
 
-Write-Log -Message "Starting processing files and folders." -Path $exportCurrentLog -Level Info
-
-Get-ChildItem $Folder -recurse `
-|where { ! $_.PSIsContainer } `
-|Select-Object Directory, BaseName, Extension `
-,@{Name="LastWriteTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastWriteTime)}} `
-,@{Name="CreationTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.CreationTime)}} `
-,@{Name="LastAccessTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastAccessTime)}} `
-,Length `
-,@{Name="Owner";Expression={if (!(Get-Acl $_.FullName).Owner) {$Missing_value} else {(Get-Acl $_.FullName).Owner} }} `
-|Export-Csv $ExportCSV -encoding "unicode"-notype -Delimiter ";"
 
 
 
@@ -366,10 +364,7 @@ $query_dropTable=" `
 
 $query_dropView=" `
     if exists(select 1 from sys.views where name='vw_drive' and type='v') drop view slc.vw_drive"
-#$query_GetServerID=" `
-#    SELECT [ServerID] FROM [ITInfra].[slc].[Server] where name='SFRFIDCFIDF007P'"
-$query_GetServerID=" `
-    SELECT [ServerID] FROM [ITInfra].[slc].[Server] where name='"+$env:computername+"'"
+
 
 
 #$Query = "Select top 1 * from [slc].[e-drive] `
@@ -377,7 +372,7 @@ $query_GetServerID=" `
 #select getdate()"
 
 #Timeout parameters
-$QueryTimeout = 120
+$QueryTimeout = 2400
 $ConnectionTimeout = 30
 
 #Action of connecting to the Database and executing the query and returning results if there were any.
@@ -386,25 +381,71 @@ $ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Ti
 $conn.ConnectionString=$ConnectionString
 
 Write-Log -Message "Testing SQL connection to server." -Path $exportCurrentLog -Level Info
+$conntest= (Test-SQLConnection $ConnectionString)
 
-if ((Test-SQLConnection $ConnectionString) -eq $true)
+if ($conntest -eq $true){
+    Write-Log -Message "Connection to SQL is OK." -Path $exportCurrentLog -Level Info
+
+    Write-Log -Message "Testing if server is authorized to send data." -Path $exportCurrentLog -Level Info
+    $auth = (VerifyIfAuthorized $env:computername)
+
+    if ($auth -ge 1){
+        Write-Log -Message "Server is authorized to send data." -Path $exportCurrentLog -Level Info
+    }
+    else
+    {
+        Write-Log -Message "Server is not authorized to send data. Add it to table slc.servers." -Path $exportCurrentLog -Level Info
+    }
+
+}
+else
 {
-    Write-Log -Message "Connection to SQL established. Continuing." -Path $exportCurrentLog -Level Info
+    Write-Log -Message "No connection to server." -Path $exportCurrentLog -Level Error
+}
+
+
+if ($conntest -eq $true -and (VerifyIfAuthorized $env:computername) -ge 1)
+{
+    Write-Log -Message "All prerequisites met. Continuing." -Path $exportCurrentLog -Level Info
+
     #Write-Host "Getting ServerID from server based on hostname."
     Write-Log -Message "Getting ServerID from server based on hostname." -Path $exportCurrentLog -Level Info
 
-    $conn.Open()
-    $Command = New-Object System.Data.SQLClient.SQLCommand
-    $Command.Connection=$conn
-    $Command.CommandText=$query_GetServerID
-    $ServerID = $Command.ExecuteScalar()
-    $conn.Close()
-    if (!($ServerID))
-    {
-        Write-Host "Your computer is not on authorized list."
-        Write-Log -Message "Your computer is not on authorized list." -Path $exportCurrentLog -Level Error
-        break
-    }
+    #if ((VerifyIfAuthorized $env:computername) -eq 0){ 
+    #    Write-Host "Your computer is not on authorized list. Hostname: $Hostname"
+    #    Write-Log -Message "Your computer is not on authorized list. Hostname: $Hostname" -Path $exportCurrentLog -Level Error
+    #    break 
+    #    }
+
+    #$conn.Open()
+    #$Command = New-Object System.Data.SQLClient.SQLCommand
+    #$Command.Connection=$conn
+    #$Command.CommandText=$query_GetServerID
+    #$ServerID = $Command.ExecuteScalar()
+    #$conn.Close()
+    #if (!($ServerID))
+    #{
+    #    Write-Host "Your computer is not on authorized list. Hostname: $env:computername"
+    #    Write-Log -Message "Your computer is not on authorized list. Hostname: $env:computername" -Path $exportCurrentLog -Level Error
+    #    break
+    #}
+
+    Write-Log -Message "Starting processing files and folders." -Path $exportCurrentLog -Level Info
+    Get-ChildItem $Folder -recurse `
+    |where { ! $_.PSIsContainer } `
+    |Select-Object Directory, BaseName, Extension `
+    ,@{Name="LastWriteTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastWriteTime)}} `
+    ,@{Name="CreationTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.CreationTime)}} `
+    ,@{Name="LastAccessTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastAccessTime)}} `
+    ,Length `
+    ,@{Name="Owner";Expression={if (!(Get-Acl $_.FullName).Owner) {$Missing_value} else {(Get-Acl $_.FullName).Owner} }} `
+    |Export-Csv $ExportCSV -encoding "unicode"-notype -Delimiter ";"
+
+    
+
+
+
+
 
     #Write-Host "My hostname is:"+ $env:computername
     #Write-Host $reader
@@ -428,7 +469,7 @@ if ((Test-SQLConnection $ConnectionString) -eq $true)
 
     #Write-Host "Processing data."
     Write-Log -Message "Processing data." -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query_ProcessData +$ServerID)
+    Execute-SQLStatement ($query_ProcessData +$auth)
 
     #Write-Host "Dropping table: $tableNAme"
     Write-Log -Message "Dropping table: $tableNAme" -Path $exportCurrentLog -Level Info
@@ -438,15 +479,18 @@ if ((Test-SQLConnection $ConnectionString) -eq $true)
     Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
     Execute-SQLStatement ($query_dropView)
 
-    $subj = "Successful processing on: " + $env:computername
-    $body = Get-Content $exportCurrentLog | Out-String
-    SendMail $body $subj
+    
+
 }
 else
 {
     #Write-Host "ERROR: No Connection to $serverName" 
-    Write-Log -Message "No Connection to $serverName." -Path $exportCurrentLog -Level Error
+    Write-Log -Message "Something went wrong with prerequisites. Check if you have connection or if is authorized." -Path $exportCurrentLog -Level Error
 }
+
+$subj = "File servers report from: " + $env:computername
+$body = Get-Content $exportCurrentLog | Out-String
+SendMail $body $subj
 
 Get-Content $exportCurrentLog  >>  $exportLog
 #Remove-Item $exportCurrentLog 
