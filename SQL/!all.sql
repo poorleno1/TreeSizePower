@@ -2929,6 +2929,8 @@ INSERT [slc].[Server] ([ServerID], [Name]) VALUES (12, N'SFRDKCOFIRE001P')
 GO
 INSERT [slc].[Server] ([ServerID], [Name]) VALUES (13, N'SFRRUSPFIRE001P')
 GO
+INSERT [slc].[Server] ([ServerID], [Name]) VALUES (14, N'LTF11000')
+GO
 SET IDENTITY_INSERT [slc].[Server] OFF
 GO
 
@@ -4483,7 +4485,7 @@ merge into slc.FileName a
   on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(a.Directory))))) = b.hash
   inner join slc.FileExtensions c
   on a.Extension = c.Name) d
-  on a.Name=d.BaseName and a.serverID=d.ServerID and a.folderID=d.FolderID
+  on a.Name=d.BaseName and a.serverID=d.ServerID and a.folderID=d.FolderID and a.ExtensionID=d.ExtensionID
   When matched then
   Update
 	set a.LastRowUpdateTime = @RowUpdateTime
