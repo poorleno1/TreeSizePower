@@ -4564,11 +4564,12 @@ print 'creating indexes'
   end
 
 
+  print 'Finished filling gaps'
  
   merge into [slc].[Folder] a
   using (select * from [slc].[Folder] where hash in (select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) from [slc].[Folder])) b
-  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(a.name)))))) = b.hash
-   when matched then
+  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(a.name)))))) = b.hash and a.driveID = b.driveID and a.ServerID = b.ServerID
+   when matched then 
   update
 	set a.ParentFolderID=b.FolderID;
   

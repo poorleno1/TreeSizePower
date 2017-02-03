@@ -1,13 +1,14 @@
-#$currentFolder="C:\Jarek\Apps\TreeSizePower"
+$currentFolder=$PSScriptRoot
 #. "$PSScriptRoot\Logging_Functions.ps1"
 $Missing_value='none'
 $Folder = 'C:\temp\'
 $OutputFolder = 'C:\Temp\slc\'
-$OutputFile = 'c-drive3.csv'
+#$OutputFile = 'c-drive3.csv'
+$OutputFile = -join ((1..10) | %{(65..90) + (97..122) | Get-Random} | % {[char]$_})
 $ExportCSV = $OutputFolder + $OutputFile
 
-#$ServerName = "SFRFIDCSQLA035P,5097"
-$ServerName = "LTF11000\MSSQLSERVER2014"
+$ServerName = "SFRFIDCSQLA035P,5097"
+#$ServerName = "LTF11000\MSSQLSERVER2014"
 $DatabaseName = "ITInfra"
 #Random generation of table name
 $tableNAme = -join ((1..10) | %{(65..90) + (97..122) | Get-Random} | % {[char]$_})
@@ -18,6 +19,7 @@ $currentLogFile="Current_log.txt"
 $logFile="Log.txt"
 $exportCurrentLog= $OutputFolder + $currentLogFile
 $exportLog= $OutputFolder + $logFile
+$destinationPath= "\\sfrfidcsqla035p\slc"
 
 
 
@@ -347,11 +349,18 @@ $Query_createView=" `
     SELECT * FROM [ITInfra].[slc].["+$tableNAme+"] `
     GO"
 
+#$query_bulLoad=" `
+#    BULK INSERT [slc].["+$tableNAme+"] `
+#    FROM '"+$ExportCSV+"' `
+#    WITH ( `
+#    FORMATFILE = '"+$SQLFormatFile+"', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
+
 $query_bulLoad=" `
     BULK INSERT [slc].["+$tableNAme+"] `
-    FROM '"+$ExportCSV+"' `
+    FROM 'K:\jarek\slc\"+$OutputFile+"' `
     WITH ( `
-    FORMATFILE = '"+$SQLFormatFile+"', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
+    FORMATFILE = 'K:\jarek\slc\temp4.fmt', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
+
 
 
 $query_ProcessData=" `
@@ -406,7 +415,7 @@ else
 
 if ($conntest -eq $true -and (VerifyIfAuthorized $env:computername) -ge 1)
 {
-    Write-Log -Message "All prerequisites met. Continuing." -Path $exportCurrentLog -Level Info
+    Write-Log -Message "All SQL prerequisites met. Continuing." -Path $exportCurrentLog -Level Info
 
     #Write-Host "Getting ServerID from server based on hostname."
     Write-Log -Message "Getting ServerID from server based on hostname." -Path $exportCurrentLog -Level Info
@@ -438,49 +447,64 @@ if ($conntest -eq $true -and (VerifyIfAuthorized $env:computername) -ge 1)
     ,@{Name="CreationTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.CreationTime)}} `
     ,@{Name="LastAccessTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastAccessTime)}} `
     ,Length `
-    ,@{Name="Owner";Expression={if (!(Get-Acl $_.FullName).Owner) {$Missing_value} else {(Get-Acl $_.FullName).Owner} }} `
+    ,@{Name="Owner";Expression={if ($_.BaseName -match "[[]" -or $_.BaseName -match "[]]" -or $_.BaseName -match "[~]") {$Missing_value}else {if (!(Get-Acl $_.FullName).Owner) {$Missing_value} else {(Get-Acl $_.FullName).Owner}}}} `
     |Export-Csv $ExportCSV -encoding "unicode"-notype -Delimiter ";"
 
-    
+    Write-log -Message "Copying over Network data file" -Path $exportCurrentLog -level Info
+    try
+    {
+        Move-Item $ExportCSV -Destination $destinationPath -Force
+    }
+    catch [System.Net.WebException],[System.Exception]
+    {
+        Write-Host "Other exception"
+        Write-log -Message "Cannot copy files to destination: $destinationPath" -Path $exportCurrentLog -level Error
+        $err = 1
+    }
 
+    if ($err -ne 1)
+    {
+        Write-log -Message "Data is prepared to load" -Path $exportCurrentLog -level Info
+        #Write-Host "Dropping View."
+        Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query_dropView)
 
+        #Write-Host "Creating table: $tableNAme"
+        Write-Log -Message "Creating table: $tableNAme" -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query)
 
+        #Write-Host "Creating view."
+        Write-Log -Message "Creating view." -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($Query_createView)
 
+        #Write-Host "Inserting data into table: $tableNAme"
+        Write-Log -Message "Inserting data into table: $tableNAme" -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query_bulLoad)
 
-    #Write-Host "My hostname is:"+ $env:computername
-    #Write-Host $reader
+        #Write-Host "Processing data."
+        Write-Log -Message "Processing data." -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query_ProcessData +$auth)
 
+        #Write-Host "Dropping table: $tableNAme"
+        Write-Log -Message "Dropping table: $tableNAme" -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query_dropTable)
 
-    #Write-Host "Dropping View."
-    Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query_dropView)
+        #Write-Host "Dropping View."
+        Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query_dropView)
 
-    #Write-Host "Creating table: $tableNAme"
-    Write-Log -Message "Creating table: $tableNAme" -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query)
+        Write-Log -Message "Cleaning network drive." -Path $exportCurrentLog -Level Info
+        try
+        {
+            $file=$destinationPath+"\"+$OutputFile
+            Remove-Item $file
+        }
+        catch [System.Net.WebException],[System.Exception]
+        {
+            Write-log -Message "Cannot remove file $file" -Path $exportCurrentLog -level Error
+        }
 
-    #Write-Host "Creating view."
-    Write-Log -Message "Creating view." -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($Query_createView)
-
-    #Write-Host "Inserting data into table: $tableNAme"
-    Write-Log -Message "Inserting data into table: $tableNAme" -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query_bulLoad)
-
-    #Write-Host "Processing data."
-    Write-Log -Message "Processing data." -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query_ProcessData +$auth)
-
-    #Write-Host "Dropping table: $tableNAme"
-    Write-Log -Message "Dropping table: $tableNAme" -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query_dropTable)
-
-    #Write-Host "Dropping View."
-    Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
-    Execute-SQLStatement ($query_dropView)
-
-    
-
+    }
 }
 else
 {

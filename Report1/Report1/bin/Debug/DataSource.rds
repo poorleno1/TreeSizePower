@@ -2,7 +2,7 @@
 <RptDataSource xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Name="DataSource">
   <ConnectionProperties>
     <Extension>SQL</Extension>
-    <ConnectString>Data Source=LTF11000\MSSQLSERVER2014;Initial Catalog=ITInfra</ConnectString>
+    <ConnectString>Data Source=sfrfidcsqla035p,5097;Initial Catalog=ITInfra</ConnectString>
   </ConnectionProperties>
   <DataSourceID>b1937ac6-7fb0-43e1-bd0a-d0f3aa7fcde9</DataSourceID>
 </RptDataSource>
