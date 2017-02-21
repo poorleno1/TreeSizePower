@@ -58,16 +58,16 @@
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>3.05903in</Width>
+                  <Width>3.59028in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1.14236in</Width>
-                </TablixColumn>
-                <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>1.34028in</Width>
                 </TablixColumn>
                 <TablixColumn>
                   <Width>1in</Width>
+                </TablixColumn>
+                <TablixColumn>
+                  <Width>1.73958in</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -108,6 +108,9 @@
                       <CellContents>
                         <Textbox Name="Textbox5">
                           <CanGrow>true</CanGrow>
+                          <UserSort>
+                            <SortExpression>=Fields!SizeBytes.Value</SortExpression>
+                          </UserSort>
                           <KeepTogether>true</KeepTogether>
                           <Paragraphs>
                             <Paragraph>
@@ -370,7 +373,7 @@
             <DataSetName>Level4</DataSetName>
             <Top>0.58681in</Top>
             <Height>0.5in</Height>
-            <Width>6.20139in</Width>
+            <Width>7.67014in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -428,7 +431,7 @@
         <Height>2in</Height>
         <Style />
       </Body>
-      <Width>6.5in</Width>
+      <Width>14.82292in</Width>
       <Page>
         <LeftMargin>1in</LeftMargin>
         <RightMargin>1in</RightMargin>

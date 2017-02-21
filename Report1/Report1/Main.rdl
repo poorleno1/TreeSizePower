@@ -398,7 +398,13 @@
                 </TablixMember>
               </TablixMembers>
             </TablixRowHierarchy>
+            <KeepTogether>true</KeepTogether>
             <DataSetName>APPL_area</DataSetName>
+            <SortExpressions>
+              <SortExpression>
+                <Value>=Fields!g_drive.Value</Value>
+              </SortExpression>
+            </SortExpressions>
             <Top>0.01389in</Top>
             <Height>0.5in</Height>
             <Width>2.58208in</Width>
@@ -667,6 +673,11 @@
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>Det_area</DataSetName>
+            <SortExpressions>
+              <SortExpression>
+                <Value>=Fields!sizeGB.Value</Value>
+              </SortExpression>
+            </SortExpressions>
             <Top>0.01389in</Top>
             <Left>4.85765in</Left>
             <Height>0.5in</Height>
@@ -1207,6 +1218,11 @@
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>I_area</DataSetName>
+            <SortExpressions>
+              <SortExpression>
+                <Value>=Fields!g_drive.Value</Value>
+              </SortExpression>
+            </SortExpressions>
             <Top>0.02778in</Top>
             <Left>7.39931in</Left>
             <Height>0.5in</Height>
@@ -1477,6 +1493,11 @@
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>J_area</DataSetName>
+            <SortExpressions>
+              <SortExpression>
+                <Value>=Fields!g_drive.Value</Value>
+              </SortExpression>
+            </SortExpressions>
             <Top>0.02778in</Top>
             <Left>9.2257in</Left>
             <Height>0.5in</Height>
@@ -1747,6 +1768,11 @@
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>Market_area</DataSetName>
+            <SortExpressions>
+              <SortExpression>
+                <Value>=Fields!g_drive.Value</Value>
+              </SortExpression>
+            </SortExpressions>
             <Top>0.02778in</Top>
             <Left>11.08681in</Left>
             <Height>0.5in</Height>
@@ -2017,6 +2043,11 @@
               </TablixMembers>
             </TablixRowHierarchy>
             <DataSetName>SFR_area</DataSetName>
+            <SortExpressions>
+              <SortExpression>
+                <Value>=Fields!g_drive.Value</Value>
+              </SortExpression>
+            </SortExpressions>
             <Top>0.04167in</Top>
             <Left>13.78819in</Left>
             <Height>0.5in</Height>
@@ -2075,10 +2106,46 @@
                     <PaddingBottom>2pt</PaddingBottom>
                   </Style>
                 </Textbox>
+                <Textbox Name="Textbox30">
+                  <CanGrow>true</CanGrow>
+                  <KeepTogether>true</KeepTogether>
+                  <Paragraphs>
+                    <Paragraph>
+                      <TextRuns>
+                        <TextRun>
+                          <Value>Admin console</Value>
+                          <ActionInfo>
+                            <Actions>
+                              <Action>
+                                <Hyperlink>http://treesizepower.statoilfuelretail.com/</Hyperlink>
+                              </Action>
+                            </Actions>
+                          </ActionInfo>
+                          <Style />
+                        </TextRun>
+                      </TextRuns>
+                      <Style />
+                    </Paragraph>
+                  </Paragraphs>
+                  <rd:DefaultName>Textbox30</rd:DefaultName>
+                  <Left>13.42234in</Left>
+                  <Height>0.25in</Height>
+                  <Width>1.75474in</Width>
+                  <ZIndex>1</ZIndex>
+                  <Style>
+                    <Border>
+                      <Style>None</Style>
+                    </Border>
+                    <PaddingLeft>2pt</PaddingLeft>
+                    <PaddingRight>2pt</PaddingRight>
+                    <PaddingTop>2pt</PaddingTop>
+                    <PaddingBottom>2pt</PaddingBottom>
+                  </Style>
+                </Textbox>
               </ReportItems>
               <KeepTogether>true</KeepTogether>
-              <Height>0.53125in</Height>
-              <Width>3.80208in</Width>
+              <Height>0.56125in</Height>
+              <Width>15.17708in</Width>
               <Style>
                 <Border>
                   <Style>None</Style>
@@ -2105,6 +2172,10 @@
                 <Paragraph>
                   <TextRuns>
                     <TextRun>
+                      <Value>Your username: </Value>
+                      <Style />
+                    </TextRun>
+                    <TextRun>
                       <Value>=User!UserID</Value>
                       <Style />
                     </TextRun>
@@ -2114,8 +2185,9 @@
               </Paragraphs>
               <rd:DefaultName>UserID</rd:DefaultName>
               <Top>0.17708in</Top>
+              <Left>0.155in</Left>
               <Height>0.25in</Height>
-              <Width>1.87837in</Width>
+              <Width>2.68045in</Width>
               <Style>
                 <Border>
                   <Style>None</Style>

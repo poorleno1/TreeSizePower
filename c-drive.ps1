@@ -1,17 +1,21 @@
 $currentFolder=$PSScriptRoot
 #. "$PSScriptRoot\Logging_Functions.ps1"
 $Missing_value='none'
-$Folder = 'C:\temp\'
+$Folder = 'C:\temp\aws\'
 $OutputFolder = 'C:\Temp\slc\'
 #$OutputFile = 'c-drive3.csv'
-$OutputFile = -join ((1..10) | %{(65..90) + (97..122) | Get-Random} | % {[char]$_})
+
+$random = -join ((1..10) | %{(65..90) + (97..122) | Get-Random} | % {[char]$_})
+$OutputFile = $env:computername +"_"+ $random
+#$tableNAme = -join ((1..10) | %{(65..90) + (97..122) | Get-Random} | % {[char]$_})
+$tableNAme = $OutputFile
 $ExportCSV = $OutputFolder + $OutputFile
 
 $ServerName = "SFRFIDCSQLA035P,5097"
 #$ServerName = "LTF11000\MSSQLSERVER2014"
 $DatabaseName = "ITInfra"
 #Random generation of table name
-$tableNAme = -join ((1..10) | %{(65..90) + (97..122) | Get-Random} | % {[char]$_})
+
 $SQLFormatFile = $currentFolder + "\temp4.fmt"
 $SMTP_server="relay.statoilfuelretail.com"
 $mailRecipient="jarekole@circlekeurope.com"
@@ -20,7 +24,97 @@ $logFile="Log.txt"
 $exportCurrentLog= $OutputFolder + $currentLogFile
 $exportLog= $OutputFolder + $logFile
 $destinationPath= "\\sfrfidcsqla035p\slc"
+$DataLoadTimeout = 60*10
+$DataLoadIterations = 250
 
+
+$Query=" `
+    CREATE TABLE [slc].["+$tableNAme+"]( `
+	    [Directory] [nvarchar](255) NULL, `
+	    [BaseName] [nvarchar](255) NULL, `
+	    [Extension] [nvarchar](255) NULL, `
+	    [LastWriteTime] [nvarchar](50) NULL, `
+	    [CreationTime] [nvarchar](50) NULL, `
+	    [LastAccessTime] [nvarchar](50) NULL, `
+	    [Length] [nvarchar](50) NULL, `
+	    [Owner] [nvarchar](255) NULL) `
+"
+
+#$Query_createView=" `
+#    create view slc.vw_drive `
+#    as `
+#    SELECT * FROM [ITInfra].[slc].["+$tableNAme+"] `
+#    GO"
+
+$Query_createView=" `
+    create view [slc].[vw_drive] `
+    as `
+    SELECT `
+	  case `
+		when left([Directory],1)='`"' then replace([Directory],'`"','') `
+		else [Directory] `
+	 end  as [Directory] `
+	  ,case `
+		when left([BaseName],1)='`"' then replace([BaseName],'`"','') `
+		else [BaseName] `
+	   end  as [BaseName] `
+	   ,case `
+		when left([Extension],1)='`"' then replace([Extension],'`"','') `
+		else [Extension] `
+	   end  as [Extension] `
+	   ,case `
+		when left([LastWriteTime],1)='`"' then replace([LastWriteTime],'`"','') `
+		else [LastWriteTime] `
+	   end  as [LastWriteTime] `
+	   ,case `
+		when left([CreationTime],1)='`"' then replace([CreationTime],'`"','') `
+		else [CreationTime] `
+	   end  as [CreationTime] `
+	   ,case `
+		when left([LastAccessTime],1)='`"' then replace([LastAccessTime],'`"','') `
+		else [LastAccessTime] `
+	   end  as [LastAccessTime] `
+	   ,case `
+		when left([Length],1)='`"' then replace([Length],'`"','') `
+		else [Length] `
+	   end  as [Length] `
+	    ,case `
+		when left([Owner],1)='`"' then replace([Owner],'`"','') `
+		else [Owner] `
+	   end  as [Owner] `
+    FROM [ITInfra].[slc].["+$tableNAme+"]"
+ #   where ISNUMERIC(case when left([Length],1)='`"' then replace([Length],'`"','')  else [Length] end)=1"
+
+#$query_bulLoad=" `
+#    BULK INSERT [slc].["+$tableNAme+"] `
+#    FROM '"+$ExportCSV+"' `
+#    WITH ( `
+#    FORMATFILE = '"+$SQLFormatFile+"', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
+
+$query_bulLoad=" `
+    BULK INSERT [slc].["+$tableNAme+"] `
+    FROM 'K:\jarek\slc\"+$OutputFile+"' `
+    WITH ( `
+    FORMATFILE = 'K:\jarek\slc\temp5.fmt', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
+
+
+
+$query_ProcessData=" `
+    exec [slc].[Import_data7] "
+
+$query_FurtherProcessData=" `
+    exec [slc].[CalculateSize3rdLevel2] `
+    GO `
+    exec [slc].[UpdateOwners] `
+    Go"
+
+$query_dropTable=" `
+    --select top 2  * from [slc].["+$tableNAme+"] `
+    drop table [slc].["+$tableNAme+"] `
+    "
+
+$query_dropView=" `
+    if exists(select 1 from sys.views where name='vw_drive' and type='v') drop view slc.vw_drive"
 
 
 
@@ -43,16 +137,23 @@ function Execute-SQLStatement ($Query)
         #$t = $da.fill($ds) | Out-String
         #Write-Log -Message "Executing statement: $t" -Path $exportCurrentLog -Level Info
     }
-    catch [System.Data.SqlClient.SqlException]
+    catch #[System.Data.SqlClient.SqlException]
     {
-        Write-Log -Message "Something went wrong with statement: $_.Exception.Number" -Path $exportCurrentLog -Level Error
+        Write-Log -Message "Something went wrong with statement: $($_.Exception.Number)" -Path $exportCurrentLog -Level Error
+        Write-Log -Message "cleaning up ..." -Path $exportCurrentLog -Level Info
+        Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($query_dropView)
+        SendMail "Error in processing SQL statement."
         #Write-Host "Something went wrong."
         #Write-Host $_.Exception.Number
         break
     }
     #finally
     #{
-    #    Write-Host "cleaning up ..."
+    #    Write-Log -Message "cleaning up ..." -Path $exportCurrentLog -Level Info
+    #    Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
+    #    Execute-SQLStatement ($query_dropView)
+    #    SendMail "Error in processing SQL statement."
     #}
 
     
@@ -85,11 +186,13 @@ function Test-SQLConnection
 }
 
 
-function SendMail ($body,$mailSubject)
+function SendMail ($mailSubject)
 {
     try
     {
+        $body = Get-Content $exportCurrentLog | Out-String
         $oSmtp = new-object Net.Mail.SmtpClient($SMTP_server)
+        $mailSubject=$env:computername + ": " +$mailSubject
         $oSmtp.Send($mailRecipient, $mailRecipient, $mailSubject, $body)
         #Exit 0
     }
@@ -236,77 +339,52 @@ function VerifyIfAuthorized ($Hostname)
     $conn.Close()
     if (!($ServerID))
     {
-        #Write-Host "Your computer is not on authorized list. Hostname: $Hostname"
-        #Write-Log -Message "Your computer is not on authorized list. Hostname: $Hostname" -Path $exportCurrentLog -Level Error
         return 0
     }
     else
     {
         return $ServerID
     }
+}
 
+function VerifyIfDBIsReady
+{
+    $query_RetVal=" `
+    select 1 as RetVal from sys.views where name='vw_drive' and type='v'"
+
+    $conn=New-Object System.Data.SqlClient.SQLConnection
+    $ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Timeout={2}" -f $ServerName,$DatabaseName,$ConnectionTimeout
+    $conn.ConnectionString=$ConnectionString
+    $conn.Open()
+    $Command = New-Object System.Data.SQLClient.SQLCommand
+    $Command.Connection=$conn
+    $Command.CommandText=$query_RetVal
+    $RetVal = $Command.ExecuteScalar()
+    $conn.Close()
+    if (!($RetVal))
+    {
+        return 0
+    }
+    else
+    {
+        return 1
+    }
 }
 
 
-#Log
-#Write-Host "Checking if current log file exists."
+#Write-Log -Message "Testing SQL connection to server." -Path $exportCurrentLog -Level Info
+
+
+
+if (Test-Path $exportCurrentLog) {
+    Write-Host "Log File Exits. Removing"
+    Remove-Item $exportCurrentLog
+}
+
 Write-Log -Message "********************************Script started ********************************" -Path $exportCurrentLog -Level Info
-Write-Log -Message "Checking if current log file exists." -Path $exportCurrentLog -Level Info
-
-if (Test-Path $exportCurrentLog)
-{
-    #Write-host "File does not exist."
-    #Write-Host "Creating Current log file."
-    Write-Log -Message "File does exist. Continuing." -Path $exportCurrentLog -Level Info
-    Write-Log -Message "Recreating Current log file." -Path $exportCurrentLog -Level Info
-    try
-    {
-        Remove-Item $exportCurrentLog
-        New-Item -ItemType file -Path $OutputFolder -Name $currentLogFile -ea stop
-    }
-    catch
-    {
-        #Write-Host "Something went wrong."
-        #Write-Host $_.Exception.Number
-        Write-Log -Message "Something went wrong with creating file: $_.Exception.Number" -Path $exportCurrentLog -Level Error
-        $subj = "Error in " + $env:computername
-        SendMail "Cannot create log file." $subj
-    }
-}
-else
-{
-    #Write-Host "Current log file exists."
-    Write-Log -Message "File does not exist. Creating." -Path $exportCurrentLog -Level Info
-    try
-    {
-        New-Item -ItemType file -Path $OutputFolder -Name $currentLogFile -ea stop
-    }
-    catch
-    {
-        Write-Log -Message "Something went wrong with creating file: $_.Exception.Number" -Path $exportCurrentLog -Level Error
-        $subj = "Error in " + $env:computername
-        SendMail "Cannot create log file." $subj
-    }
-}
-
-
-
-
-
-
-
-#Write-Log -Message 'Starting logging.' -Path $exportCurrentLog -Level Info
-#end of Log
-
-
-#Log-Start -LogPath "C:\temp" -LogName "Last.log" -ScriptVersion "1.5"
-
-
 
 if (!(Test-Path $Folder))
 {
-
-    #Write-host "ERROR: Folder $folder does not exists. Please verify path."
     Write-Log -Message "Folder $folder does not exists. Please verify path." -Path $exportCurrentLog -Level Error
     break
 }
@@ -320,10 +398,9 @@ try
     }
 catch [System.IO]
     {
-    #Write-Host "ERROR: Something went wrong with creating folder $OutputFolder"
     Write-Log -Message "Something went wrong with creating folder $OutputFolder." -Path $exportCurrentLog -Level Error
     $subj = "Error in " + $env:computername
-    SendMail "Cannot create outfile file. " $subj
+    SendMail "Cannot create outfile file. "
     break
     }
 }
@@ -331,57 +408,9 @@ catch [System.IO]
 
 
 
-$Query=" `
-    CREATE TABLE [slc].["+$tableNAme+"]( `
-	    [Directory] [nvarchar](255) NULL, `
-	    [BaseName] [nvarchar](255) NULL, `
-	    [Extension] [nvarchar](255) NULL, `
-	    [LastWriteTime] [nvarchar](50) NULL, `
-	    [CreationTime] [nvarchar](50) NULL, `
-	    [LastAccessTime] [nvarchar](50) NULL, `
-	    [Length] [nvarchar](50) NULL, `
-	    [Owner] [nvarchar](255) NULL) `
-"
-
-$Query_createView=" `
-    create view slc.vw_drive `
-    as `
-    SELECT * FROM [ITInfra].[slc].["+$tableNAme+"] `
-    GO"
-
-#$query_bulLoad=" `
-#    BULK INSERT [slc].["+$tableNAme+"] `
-#    FROM '"+$ExportCSV+"' `
-#    WITH ( `
-#    FORMATFILE = '"+$SQLFormatFile+"', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
-
-$query_bulLoad=" `
-    BULK INSERT [slc].["+$tableNAme+"] `
-    FROM 'K:\jarek\slc\"+$OutputFile+"' `
-    WITH ( `
-    FORMATFILE = 'K:\jarek\slc\temp4.fmt', FIRSTROW = 2 ,DATAFILETYPE = 'widechar')"
-
-
-
-$query_ProcessData=" `
-    exec [slc].[Import_data6] "
-
-$query_dropTable=" `
-    --select top 2  * from [slc].["+$tableNAme+"] `
-    drop table [slc].["+$tableNAme+"] `
-    "
-
-$query_dropView=" `
-    if exists(select 1 from sys.views where name='vw_drive' and type='v') drop view slc.vw_drive"
-
-
-
-#$Query = "Select top 1 * from [slc].[e-drive] `
-#Go `
-#select getdate()"
 
 #Timeout parameters
-$QueryTimeout = 2400
+$QueryTimeout = 24000
 $ConnectionTimeout = 30
 
 #Action of connecting to the Database and executing the query and returning results if there were any.
@@ -416,80 +445,84 @@ else
 if ($conntest -eq $true -and (VerifyIfAuthorized $env:computername) -ge 1)
 {
     Write-Log -Message "All SQL prerequisites met. Continuing." -Path $exportCurrentLog -Level Info
-
-    #Write-Host "Getting ServerID from server based on hostname."
     Write-Log -Message "Getting ServerID from server based on hostname." -Path $exportCurrentLog -Level Info
-
-    #if ((VerifyIfAuthorized $env:computername) -eq 0){ 
-    #    Write-Host "Your computer is not on authorized list. Hostname: $Hostname"
-    #    Write-Log -Message "Your computer is not on authorized list. Hostname: $Hostname" -Path $exportCurrentLog -Level Error
-    #    break 
-    #    }
-
-    #$conn.Open()
-    #$Command = New-Object System.Data.SQLClient.SQLCommand
-    #$Command.Connection=$conn
-    #$Command.CommandText=$query_GetServerID
-    #$ServerID = $Command.ExecuteScalar()
-    #$conn.Close()
-    #if (!($ServerID))
-    #{
-    #    Write-Host "Your computer is not on authorized list. Hostname: $env:computername"
-    #    Write-Log -Message "Your computer is not on authorized list. Hostname: $env:computername" -Path $exportCurrentLog -Level Error
-    #    break
-    #}
-
-    Write-Log -Message "Starting processing files and folders." -Path $exportCurrentLog -Level Info
+    Write-Log -Message "Starting processing files and folders in $Folder" -Path $exportCurrentLog -Level Info
     Get-ChildItem $Folder -recurse `
     |where { ! $_.PSIsContainer } `
-    |Select-Object Directory, BaseName, Extension `
+    |Select-Object `
+     @{Name="Directory";Expression={if ($_.Directory -match "[;]") {$_.Directory -replace ";","" } else {$_.Directory}}} `
+    ,@{Name="BaseName";Expression={if ($_.BaseName -match "[;]") {$_.BaseName -replace ";","" } else {$_.BaseName}}} `
+    ,@{Name="Extension";Expression={if ($_.Extension -match "[;]") {$_.Extension -replace ";","" } else {$_.Extension}}} `
     ,@{Name="LastWriteTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastWriteTime)}} `
     ,@{Name="CreationTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.CreationTime)}} `
     ,@{Name="LastAccessTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastAccessTime)}} `
     ,Length `
-    ,@{Name="Owner";Expression={if ($_.BaseName -match "[[]" -or $_.BaseName -match "[]]" -or $_.BaseName -match "[~]") {$Missing_value}else {if (!(Get-Acl $_.FullName).Owner) {$Missing_value} else {(Get-Acl $_.FullName).Owner}}}} `
+    ,@{Name="Owner1";Expression={(Get-Acl $_.FullName).Owner}} `
     |Export-Csv $ExportCSV -encoding "unicode"-notype -Delimiter ";"
+
+
+    #|Select-Object Directory, BaseName, Extension `
+    #,@{Name="LastWriteTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastWriteTime)}} `
+    #,@{Name="CreationTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.CreationTime)}} `
+    #,@{Name="LastAccessTime";Expression= {"{0:yyyy}-{0:MM}-{0:dd} {0:hh}:{0:mm}:{0:ss}" -f ([DateTime]$_.LastAccessTime)}} `
+    #,Length `
+    #,@{Name="Owner";Expression={if ($_.BaseName -match "[[]" -or $_.BaseName -match "[]]" -or $_.BaseName -match "[~]") {$Missing_value}else {if (!(Get-Acl $_.FullName).Owner) {$Missing_value} else {(Get-Acl $_.FullName).Owner}}}} `
+    #|Export-Csv $ExportCSV -encoding "unicode"-notype -Delimiter ";"
 
     Write-log -Message "Copying over Network data file" -Path $exportCurrentLog -level Info
     try
     {
-        Move-Item $ExportCSV -Destination $destinationPath -Force
+        $err=0
+        Move-Item $ExportCSV -Destination $destinationPath -Force -ErrorAction Stop
     }
-    catch [System.Net.WebException],[System.Exception]
+    catch
     {
         Write-Host "Other exception"
-        Write-log -Message "Cannot copy files to destination: $destinationPath" -Path $exportCurrentLog -level Error
+        Write-log -Message "Cannot copy files to destination: $destinationPath, $($_.exception.message)" -Path $exportCurrentLog -level Error
         $err = 1
     }
 
     if ($err -ne 1)
     {
-        Write-log -Message "Data is prepared to load" -Path $exportCurrentLog -level Info
-        #Write-Host "Dropping View."
-        Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
-        Execute-SQLStatement ($query_dropView)
+        Write-log -Message "Data is prepared to load." -Path $exportCurrentLog -level Info
 
-        #Write-Host "Creating table: $tableNAme"
         Write-Log -Message "Creating table: $tableNAme" -Path $exportCurrentLog -Level Info
         Execute-SQLStatement ($query)
 
-        #Write-Host "Creating view."
-        Write-Log -Message "Creating view." -Path $exportCurrentLog -Level Info
-        Execute-SQLStatement ($Query_createView)
-
-        #Write-Host "Inserting data into table: $tableNAme"
         Write-Log -Message "Inserting data into table: $tableNAme" -Path $exportCurrentLog -Level Info
         Execute-SQLStatement ($query_bulLoad)
 
-        #Write-Host "Processing data."
+        Write-Log -Message "Verifying if View is created."
+        
+        if (VerifyIfDBIsReady -eq 1)
+        {
+            $n = 0
+            while ($n -lt $DataLoadIterations) {
+                Write-Log -Message "Other process is loading data. Waiting $DataLoadTimeout seconds" -Path $exportCurrentLog -Level Info
+                if (VerifyIfDBIsReady -eq 1) { Start-Sleep -Seconds $DataLoadTimeout } 
+                else {
+                Write-Log -Message "Resouces released. Moving forward with creating view." -Path $exportCurrentLog -Level Info
+                $n = $DataLoadIterations}
+                $n += 1
+            }
+
+            if (VerifyIfDBIsReady -eq 1 -and $n -eq $DataLoadIterations) {
+            Write-Log -Message "Process timed out while waiting for view to be released." -Path $exportCurrentLog -Level Info
+            SendMail "File servers report."
+            break}
+        }
+        
+        
+
+        Write-Log -Message "Creating view." -Path $exportCurrentLog -Level Info
+        Execute-SQLStatement ($Query_createView)
+
         Write-Log -Message "Processing data." -Path $exportCurrentLog -Level Info
         Execute-SQLStatement ($query_ProcessData +$auth)
 
-        #Write-Host "Dropping table: $tableNAme"
         Write-Log -Message "Dropping table: $tableNAme" -Path $exportCurrentLog -Level Info
         Execute-SQLStatement ($query_dropTable)
 
-        #Write-Host "Dropping View."
         Write-Log -Message "Dropping View." -Path $exportCurrentLog -Level Info
         Execute-SQLStatement ($query_dropView)
 
@@ -503,18 +536,11 @@ if ($conntest -eq $true -and (VerifyIfAuthorized $env:computername) -ge 1)
         {
             Write-log -Message "Cannot remove file $file" -Path $exportCurrentLog -level Error
         }
-
     }
 }
 else
 {
-    #Write-Host "ERROR: No Connection to $serverName" 
     Write-Log -Message "Something went wrong with prerequisites. Check if you have connection or if is authorized." -Path $exportCurrentLog -Level Error
 }
-
-$subj = "File servers report from: " + $env:computername
-$body = Get-Content $exportCurrentLog | Out-String
-SendMail $body $subj
-
+SendMail "File servers report."
 Get-Content $exportCurrentLog  >>  $exportLog
-#Remove-Item $exportCurrentLog 

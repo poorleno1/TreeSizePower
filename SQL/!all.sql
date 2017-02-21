@@ -1291,10 +1291,10 @@ begin
 	,t3.owner
 	,t3.rnk
  from 
-	cte t1 inner join slc.FileName t2 
+	cte t1 left outer join slc.FileName t2 
  on 
 	t1.[FolderID] = t2.[FolderID]
-inner join (select *from slc.TopFileOwners where rnk=1) t3
+left outer join (select *from slc.TopFileOwners where rnk=1) t3
 --inner join slc.vw_TopFileOwner t3
 on 
 	t1.[FolderID] = t3.[FolderID]
@@ -1336,10 +1336,10 @@ begin
 	,t3.owner
 	,t3.rnk
    from 
-	cte t1 inner join slc.FileName t2 
+	cte t1 left outer join slc.FileName t2 
  on 
 	t1.[FolderID] = t2.[FolderID]
-inner join (select *from slc.TopFileOwners where rnk=1) t3
+left outer join (select *from slc.TopFileOwners where rnk=1) t3
 --inner join slc.vw_TopFileOwner t3
 on 
 	t1.[FolderID] = t3.[FolderID]
@@ -2941,6 +2941,8 @@ AS
 begin
     
 DROP INDEX [IX_FileOwners_folderid] ON [slc].[FileOwners]
+
+truncate table [slc].[FileOwners]
 
 insert into [slc].[FileOwners]
 select distinct
@@ -4578,6 +4580,257 @@ print 'creating indexes'
 --SFRFIDCFIDF007P: exec [slc].[Import_data6] 1
 --SFRFIDCFIDF002P: exec [slc].[Import_data4] 2
 --SFRFIDCFIDF003P: exec [slc].[Import_data4] 3
+--SFRFIDCFIDF008P: exec [slc].[Import_data4] 4
+
+END
+
+GO
+
+
+
+USE [ITInfra]
+GO
+/****** Object:  StoredProcedure [slc].[Import_data6]    Script Date: 2017-02-08 11:16:26 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		Jarek Olechno
+-- Create date: 23.11.2016
+-- Description:	Process data imported from file servers
+-- =============================================
+alter PROCEDURE [slc].[Import_data7]
+	-- Add the parameters for the stored procedure here
+	@serverID int
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+
+--declare @serverID int
+declare @directory nvarchar(MAX)
+declare @ParentDirectory nvarchar(4000)
+declare @BaseName nvarchar(255)
+declare @Extension nvarchar(255)
+declare @LastWriteTime nvarchar(50)
+declare @CreationTime nvarchar(50)
+declare @LastAccessTime nvarchar(50)
+declare @Length nvarchar(50)
+declare @Owner nvarchar(255)
+declare @hash varbinary(20)
+declare @hashParent varbinary(20)
+declare @indentity bigint
+--declare @RowUpdateTime datetime
+declare @RowUpdateTime_selected datetime
+declare @folderID int
+declare @folderID_selected int
+declare @ParentfolderID int
+declare @ExtensionID int
+declare @isNew bit
+
+--declare @serverID int
+--set @serverID=1
+declare @RowUpdateTime datetime
+select @RowUpdateTime=GETDATE()
+--select @RowUpdateTime=dateadd(day,-7,GETDATE())
+declare @driveID int
+--select @RowUpdateTime=dateadd(day,-7,GETDATE())
+
+print '-----------------------'
+print 'Processing Folder table'
+
+select top 1 @driveID=driveID from slc.drive where name in (select top 1 cast(replace(slc.fn_Split6(directory,'\',1),':','') as CHAR(1)) from [slc].[vw_drive])
+
+print 'Dropping indexes'
+IF  EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[slc].[Folder]') AND name = N'idx_Name_server')
+DROP INDEX [idx_Name_server] ON [slc].[Folder] WITH ( ONLINE = OFF )
+
+
+IF  EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[slc].[Folder]') AND name = N'PK_Folder2')
+ALTER TABLE [slc].[Folder] DROP CONSTRAINT [PK_Folder2]
+
+print 'upserting data'
+  merge into [slc].[Folder] a
+  using (SELECT distinct directory,@serverID as ServerID FROM [ITInfra].[slc].[vw_drive]) b
+  on a.hash = HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.[Directory]))))) and a.serverid=b.serverid
+  when not matched then 
+  INSERT
+     ([Name],[DriveID],[Level],[LastRowUpdateTime],[IsNew],[ServerID],[Length],[hash],[ParentFolderID])
+  VALUES
+	(cast(Directory as NVARCHAR(4000)),@driveID,slc.CountOccurancesOfString(cast(Directory as nvarchar(4000)),'\'),@RowUpdateTime,1,@serverID, LEN(b.[Directory])
+  ,HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.[Directory])))))
+  ,-1);
+  
+ print 'creating indexes'
+ CREATE NONCLUSTERED INDEX [idx_Name_server] ON [slc].[Folder] 
+(
+	[Name] ASC,
+	[ServerID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+
+/****** Object:  Index [PK_Folder2]    Script Date: 11/28/2016 15:54:43 ******/
+ALTER TABLE [slc].[Folder] ADD  CONSTRAINT [PK_Folder2] PRIMARY KEY CLUSTERED 
+(
+	[FolderID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+ 
+
+
+ print '-----------------------'
+print 'Processing Extension table'
+
+  merge into slc.FileExtensions a
+  using (select distinct Extension  FROM [ITInfra].[slc].[vw_drive]) b
+  on a.Name = b.Extension
+  when not matched then
+  insert
+	([Name])
+	Values
+	(b.Extension);
+
+
+ print '-----------------------'
+print 'Processing File table'
+print 'dropping indexes'
+
+IF  EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[slc].[FileName]') AND name = N'idx_FolderID')
+DROP INDEX [idx_FolderID] ON [slc].[FileName] WITH ( ONLINE = OFF )
+  
+  
+Print 'Deleting file information from folders that will be loaded.'
+
+delete from slc.filename where folderid in 
+(select distinct b.folderID
+  from slc.[vw_drive] a
+  inner join [slc].[Folder] b
+  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(a.Directory))))) = b.hash
+  )
+
+print 'upserting data'
+
+merge into slc.FileName a
+  using (select  b.folderID, a.BaseName ,a.Length ,a.Owner
+  , case isdate(a.CreationTime)
+  when 1 then a.CreationTime
+  else
+		case isdate(a.LastWriteTime)
+	  when 1 then a.LastWriteTime
+	  else
+		@RowUpdateTime
+	 end
+ end as CreationTime
+  , case isdate(a.LastWriteTime)
+  when 1 then a.LastWriteTime
+  else
+	@RowUpdateTime
+ end as LastWriteTime
+ , case isdate(a.LastAccessTime)
+  when 1 then a.LastAccessTime
+  else
+	@RowUpdateTime
+ end  as LastAccessTime
+  --a.CreationTime,a.LastWriteTime,a.LastAccessTime
+  ,@RowUpdateTime as LastRowUpdateTime, 1 as IsNew, @serverID as ServerID
+  ,c.ExtensionID 
+  from slc.[vw_drive] a
+  inner join [slc].[Folder] b
+  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(a.Directory))))) = b.hash
+  inner join slc.FileExtensions c
+  on a.Extension = c.Name) d
+  on a.Name=d.BaseName and a.serverID=d.ServerID and a.folderID=d.FolderID and a.ExtensionID=d.ExtensionID 
+  When matched then
+  Update
+	set a.LastRowUpdateTime = @RowUpdateTime
+	,a.SizeBytes = d.Length
+	,a.LastAccessTime = case isdate(a.LastAccessTime)   when 1 then a.LastAccessTime else @RowUpdateTime end
+	,a.CreationTime = case isdate(a.CreationTime) when 1 then a.CreationTime else case isdate(a.LastWriteTime) when 1 then a.LastWriteTime else @RowUpdateTime end end
+	,a.LastWriteTime = case isdate(a.LastWriteTime) when 1 then a.LastWriteTime else @RowUpdateTime end
+  when not matched by target then
+  INSERT 
+    ([FolderID],[Name],[SizeBytes],[Owner],[CreationTime],[LastWriteTime],[LastAccessTime],[LastRowUpdateTime],[IsNew],[ServerID],[ExtensionID])
+  VALUES
+    (d.FolderID,d.BaseName,d.Length,d.Owner,d.CreationTime,d.LastWriteTime,d.LastAccessTime,d.LastRowUpdateTime,d.IsNew,d.ServerID,d.ExtensionID);
+
+
+
+print 'creating indexes'
+ CREATE CLUSTERED INDEX [idx_FolderID] ON [slc].[FileName] 
+(
+	[FolderID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+
+
+ 
+ print 'updating Folder table, filling subfolder gaps' 
+ --This creates a subfolders entries in tables, for folders where there are no files.
+
+  declare @r int
+	merge into [slc].[Folder] a
+    using (
+		 select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) as hash,slc.GetParentDirectory(name) as Name,serverid from [slc].[Folder] t1
+			 where not exists
+				(
+					select name from [slc].[Folder] t2
+					where t2.name=slc.GetParentDirectory(t1.name)
+					and t1.serverID = t2.serverID
+				)
+    ) b
+	  on a.hash = b.hash
+	  and a.serverid=b.serverid
+	  when not matched and b.name is not null then
+	   INSERT 
+	   ([Name],[DriveID],[Level],[LastRowUpdateTime],[IsNew],[ServerID],[Length],[hash],[ParentFolderID])
+	   VALUES
+	   (b.name,@driveID,slc.CountOccurancesOfString([Name],'\'),@RowUpdateTime,1,b.serverid,len(b.name),HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.name))))),-1);
+	    select @r=@@ROWCOUNT
+  while @r >= 0
+  begin
+  --PRINT 'Inside WHILE LOOP on TechOnTheNet.com';
+	print @r
+	--set @r= @r-1;
+	   merge into [slc].[Folder] a
+    using (
+		 select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) as hash,slc.GetParentDirectory(name) as Name,serverid from [slc].[Folder] t1
+			 where not exists
+				(
+					select name from [slc].[Folder] t2
+					where t2.name=slc.GetParentDirectory(t1.name)
+					and t1.serverID = t2.serverID
+				)
+    ) b
+	  on a.hash = b.hash
+	  and a.serverid=b.serverid
+	  when not matched and b.name is not null then
+	   INSERT
+	   ([Name],[DriveID],[Level],[LastRowUpdateTime],[IsNew],[ServerID],[Length],[hash],[ParentFolderID]) 
+	   VALUES
+	   (b.name,@driveID,slc.CountOccurancesOfString([Name],'\'),@RowUpdateTime,1,b.serverid,len(b.name),HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(b.name))))),-1);
+	    select @r=@@ROWCOUNT
+		
+		if (@r=0)
+			break
+		else
+			Continue
+  end
+
+
+  print 'Finished filling gaps'
+ 
+  merge into [slc].[Folder] a
+  using (select * from [slc].[Folder] where hash in (select distinct HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(name)))))) from [slc].[Folder])) b
+  on HASHBYTES('SHA1',(CONVERT(NVARCHAR(4000), ltrim(RTRIM(slc.GetParentDirectory(a.name)))))) = b.hash and a.driveID = b.driveID and a.ServerID = b.ServerID
+   when matched then 
+  update
+	set a.ParentFolderID=b.FolderID;
+  
+  
+--select  * from [slc].[Folder] where parentfolderid<>-1
+--SFRFIDCFIDF007P: exec [slc].[Import_data6] 1
+--SFRFIDCFIDF002P: exec [slc].[Import_data4] 2
+--SFRFIDCFIDF003P: exec [slc].[Import_data7] 3
 --SFRFIDCFIDF008P: exec [slc].[Import_data4] 4
 
 END

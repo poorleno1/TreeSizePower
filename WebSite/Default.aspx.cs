@@ -48,8 +48,8 @@ public partial class _Default : System.Web.UI.Page
         gv.DataBind();
     }
 
-    [System.Web.Script.Services.ScriptMethod()]
     [System.Web.Services.WebMethod]
+    [System.Web.Script.Services.ScriptMethod()]
     public static List<string> SearchCustomers(string prefixText, int count)
     {
         using (SqlConnection conn = new SqlConnection())
@@ -57,6 +57,7 @@ public partial class _Default : System.Web.UI.Page
 
             conn.ConnectionString = ConfigurationManager
                     .ConnectionStrings["ServerConnection"].ConnectionString;
+
             using (SqlCommand cmd = new SqlCommand())
             {
                 cmd.CommandText = "SELECT Name FROM [slc].[users] where " +
@@ -77,6 +78,14 @@ public partial class _Default : System.Web.UI.Page
             }
         }
     }
+
+    [System.Web.Services.WebMethod]
+    [System.Web.Script.Services.ScriptMethod()]
+    public string HelloWorld()
+    {
+        return "Hello World!";
+    }
+
 
 
     public static string GetImage(bool value)

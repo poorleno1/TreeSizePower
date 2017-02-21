@@ -102,28 +102,28 @@
             <TablixBody>
               <TablixColumns>
                 <TablixColumn>
-                  <Width>3.67361in</Width>
+                  <Width>7.27778in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>0.86458in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>0.77083in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>0.63542in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>0.625in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>0.66667in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>3.72917in</Width>
                 </TablixColumn>
                 <TablixColumn>
-                  <Width>1in</Width>
+                  <Width>0.77083in</Width>
                 </TablixColumn>
               </TablixColumns>
               <TablixRows>
@@ -229,7 +229,7 @@
                             <Paragraph>
                               <TextRuns>
                                 <TextRun>
-                                  <Value>averagesize KB</Value>
+                                  <Value>Averagesize KB</Value>
                                   <Style />
                                 </TextRun>
                               </TextRuns>
@@ -603,6 +603,7 @@
                             </Paragraph>
                           </Paragraphs>
                           <rd:DefaultName>owner</rd:DefaultName>
+                          <ToolTip>="User owns " &amp; Fields!percentage.Value &amp; " percent of all files ("&amp; Fields!No_Files.Value &amp;") in this folder with average size of: " &amp;Fields!averagesizeKB.Value &amp; " kB."</ToolTip>
                           <Style>
                             <Border>
                               <Color>LightGrey</Color>
@@ -664,11 +665,23 @@
                   </Visibility>
                 </TablixMember>
                 <TablixMember />
+                <TablixMember>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
+                </TablixMember>
+                <TablixMember>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
+                </TablixMember>
                 <TablixMember />
                 <TablixMember />
-                <TablixMember />
-                <TablixMember />
-                <TablixMember />
+                <TablixMember>
+                  <Visibility>
+                    <Hidden>true</Hidden>
+                  </Visibility>
+                </TablixMember>
               </TablixMembers>
             </TablixColumnHierarchy>
             <TablixRowHierarchy>
@@ -690,7 +703,7 @@
             </SortExpressions>
             <Top>0.58681in</Top>
             <Height>0.44792in</Height>
-            <Width>10.67361in</Width>
+            <Width>15.34028in</Width>
             <Style>
               <Border>
                 <Style>None</Style>
@@ -748,7 +761,7 @@
         <Height>2.29167in</Height>
         <Style />
       </Body>
-      <Width>11.23611in</Width>
+      <Width>15.60069in</Width>
       <Page>
         <LeftMargin>1in</LeftMargin>
         <RightMargin>1in</RightMargin>

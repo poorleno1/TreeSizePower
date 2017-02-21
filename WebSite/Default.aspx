@@ -1,4 +1,5 @@
 ﻿<%@ Page Language="C#" AutoEventWireup="true" CodeFile="Default.aspx.cs" Inherits="_Default" %>
+<%@ Register tagPrefix="ajaxToolkit" assembly="AjaxControlToolkit" namespace="AjaxControlToolkit" %>
 
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -7,10 +8,16 @@
 </head>
 <body>
     <form id="MasterPageForm" runat="server">
-        <ajaxToolkit:ToolkitScriptManager ID="ScriptManager1" runat="server" />
+        <ajaxToolkit:ToolkitScriptManager ID="ScriptManager1" runat="server">
+            <Services>
+                <asp:ServiceReference Path="~/WebService.asmx"/>
+            </Services>
+        </ajaxToolkit:ToolkitScriptManager>
         <div>
             <div id="master_header">
                 <asp:Label runat="server" Text="My access"></asp:Label>
+                <br />
+                <asp:HyperLink runat="server" Text="Report3" NavigateUrl="http://sfrfidcsqla035p/ReportServer/Pages/ReportViewer.aspx?%2fReport1%2fMain&rs:Command=Render"></asp:HyperLink>
             </div>
             <br />
             <div id="master_content">
